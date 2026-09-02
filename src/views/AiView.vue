@@ -58,6 +58,12 @@ async function send(type) {
   }
 }
 
+function handleComposerKeydown(event) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  event.preventDefault()
+  send(activeTab.value)
+}
+
 async function rebuildKnowledge() {
   rebuilding.value = true
   try {
@@ -92,7 +98,7 @@ async function rebuildKnowledge() {
       </div>
     </div>
     <div class="composer">
-      <el-input v-model="panels[activeTab].input" type="textarea" :rows="3" maxlength="2000" show-word-limit placeholder="请输入问题，Ctrl + Enter 发送" @keydown.ctrl.enter.prevent="send(activeTab)" />
+      <el-input v-model="panels[activeTab].input" type="textarea" :rows="3" maxlength="2000" show-word-limit placeholder="请输入问题，Enter 发送，Shift + Enter 换行" @keydown="handleComposerKeydown" />
       <div class="composer-actions"><span>当前页面刷新后会清空本次显示的消息</span><el-button type="primary" :loading="panels[activeTab].loading" :disabled="!panels[activeTab].input.trim()" @click="send(activeTab)">发送</el-button></div>
     </div>
   </div>

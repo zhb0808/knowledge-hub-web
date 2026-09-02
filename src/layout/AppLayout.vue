@@ -37,8 +37,13 @@ const groups = computed(() => [
 ].filter((group) => group.items.length))
 
 async function handleLogout() {
-  await authStore.logout()
-  router.replace({ name: 'login' })
+  try {
+    await authStore.logout()
+  } catch (error) {
+    console.warn('服务端退出请求失败，本地登录状态已清理：', error.message)
+  } finally {
+    await router.replace({ name: 'login' })
+  }
 }
 </script>
 

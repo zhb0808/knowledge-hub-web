@@ -10,6 +10,13 @@ export async function streamPost(url, body, onEvent) {
     body: JSON.stringify(body),
   })
 
+  if (response.status === 401) {
+    localStorage.removeItem(TOKEN_KEY)
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+  }
+
   if (!response.ok) {
     let message = '流式请求失败'
     try {
