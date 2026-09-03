@@ -85,4 +85,5 @@ export const operationLogApi = {
 
 export const aiApi = {
   rebuildKnowledge: () => http.post('/ai/knowledge/rebuild', null, { timeout: 120000 }),
+  clearConversation: (conversationId) => http.delete(`/ai/chat/conversations/${conversationId}`),
 }

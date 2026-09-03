@@ -107,6 +107,7 @@ button, input, textarea { font: inherit; }
 .markdown-body hr { margin: 18px 0; border: 0; border-top: 1px solid var(--slate-200); }
 .source-list { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .source-label { margin-right: 2px; color: var(--slate-500); font-size: 12px; }
+.token-usage { margin-top: 8px; color: var(--slate-400); font-size: 11px; }
 .composer { padding: 16px max(28px, calc((100% - 900px) / 2)); background: #f8fafc; border-top: 1px solid var(--slate-200); }
 .composer-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 9px; color: var(--slate-500); font-size: 11px; }
 

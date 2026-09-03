@@ -11,7 +11,7 @@ const activeTab = ref('knowledge')
 const rebuilding = ref(false)
 const messageBox = ref(null)
 const panels = reactive({
-  general: { input: '', loading: false, messages: [] },
+  general: { input: '', loading: false, messages: [], conversationId: crypto.randomUUID() },
   knowledge: { input: '', loading: false, messages: [] },
 })
 
@@ -32,7 +32,7 @@ async function send(type) {
   if (!question || panel.loading) return
 
   panel.messages.push({ role: 'user', content: question })
-  const answer = reactive({ role: 'assistant', content: '', sources: [] })
+  const answer = reactive({ role: 'assistant', content: '', sources: [], usage: null })
   panel.messages.push(answer)
   panel.input = ''
   panel.loading = true
@@ -40,10 +40,15 @@ async function send(type) {
 
   try {
     const url = type === 'general' ? '/api/ai/chat/stream' : '/api/ai/knowledge-chat/stream'
-    await streamPost(url, { message: question }, ({ event, data }) => {
+    const request = type === 'general'
+      ? { conversationId: panel.conversationId, message: question }
+      : { message: question }
+    await streamPost(url, request, ({ event, data }) => {
       if (event === 'sources') {
         answer.sources = uniqueSources(JSON.parse(data))
-      } else {
+      } else if (event === 'usage') {
+        answer.usage = JSON.parse(data)
+      } else if (event === 'content' || event === 'message') {
         answer.content += data
       }
       scrollToBottom()
@@ -55,6 +60,21 @@ async function send(type) {
   } finally {
     panel.loading = false
     await scrollToBottom()
+  }
+}
+
+async function startNewConversation() {
+  const panel = panels.general
+  if (panel.loading) return
+
+  try {
+    await aiApi.clearConversation(panel.conversationId)
+    panel.conversationId = crypto.randomUUID()
+    panel.input = ''
+    panel.messages = []
+    ElMessage.success('已开始新对话')
+  } catch (error) {
+    ElMessage.error(error.message)
   }
 }
 
@@ -74,18 +94,19 @@ async function rebuildKnowledge() {
 </script>
 
 <template>
-  <PageHeader title="AI 对话" description="对比通用大模型回答与基于企业知识的回答。">
+  <PageHeader title="AI 对话" description="使用 AI 助手连续交流，或根据企业知识获得有资料依据的回答。">
+    <el-button v-if="activeTab === 'general'" @click="startNewConversation">新对话</el-button>
     <el-button v-if="authStore.hasPermission('document:manage')" :loading="rebuilding" @click="rebuildKnowledge">重建企业知识向量</el-button>
   </PageHeader>
   <div class="ai-panel">
     <el-tabs v-model="activeTab" class="ai-tabs">
       <el-tab-pane label="企业知识问答" name="knowledge" />
-      <el-tab-pane label="通用 AI 助手" name="general" />
+      <el-tab-pane label="AI 助手" name="general" />
     </el-tabs>
     <div ref="messageBox" class="message-list">
       <div v-if="!panels[activeTab].messages.length" class="ai-empty">
-        <h2>{{ activeTab === 'knowledge' ? '询问企业内部制度与知识' : '向通用 AI 助手提问' }}</h2>
-        <p>{{ activeTab === 'knowledge' ? '回答会使用已重建的企业知识，并标出来源文档。' : '回答来自大模型自身知识，不会检索企业文档。' }}</p>
+        <h2>{{ activeTab === 'knowledge' ? '询问企业内部制度与知识' : '与 AI 助手连续对话' }}</h2>
+        <p>{{ activeTab === 'knowledge' ? '回答会使用已重建的企业知识，并标出来源文档。' : 'AI 会记住当前对话，也可以查询最近更新的已发布文档。' }}</p>
       </div>
       <div v-for="(message, index) in panels[activeTab].messages" :key="index" :class="['message-row', message.role]">
         <div class="message-role">{{ message.role === 'user' ? '你' : 'AI' }}</div>
@@ -94,6 +115,7 @@ async function rebuildKnowledge() {
           <div v-else-if="message.content" class="message-text markdown-body" v-html="renderMarkdown(message.content)" />
           <div v-else class="message-text"><span v-if="panels[activeTab].loading" class="typing">正在生成回答…</span></div>
           <div v-if="message.sources?.length" class="source-list"><span class="source-label">参考文档</span><el-tag v-for="source in message.sources" :key="source.documentId" type="info">{{ source.title }}</el-tag></div>
+          <div v-if="message.usage" class="token-usage">输入 {{ message.usage.inputTokens }} Token · 输出 {{ message.usage.outputTokens }} Token · 共 {{ message.usage.totalTokens }} Token</div>
         </div>
       </div>
     </div>
